@@ -9,10 +9,12 @@ import {
   getProvinceData, 
   monthOptions,
   PRICE_RATIOS,
+  PRICE_COLORS,
   type PriceType,
   type TimeSlot
 } from '@/data/electricityPriceData';
 import { 
+  BarChart,
   Bar, 
   XAxis, 
   YAxis, 
