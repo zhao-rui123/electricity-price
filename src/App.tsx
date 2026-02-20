@@ -26,7 +26,6 @@ import {
 } from 'recharts';
 import { 
   Zap, 
-  Calendar, 
   MapPin, 
   Info, 
   Clock,
@@ -88,20 +87,21 @@ const prepareChartData = (timeSlots: TimeSlot[]) => {
 };
 
 // 自定义Tooltip
-const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{payload: {hour: string; type: PriceType | null}}> }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    if (data.type) {
+    if (data.type && data.type in PRICE_TYPE_INFO) {
       const info = PRICE_TYPE_INFO[data.type];
+      const color = PRICE_COLORS[data.type];
       return (
         <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
           <p className="font-semibold text-gray-800">{data.hour}</p>
           <div className="flex items-center gap-2 mt-1">
             <span 
               className="w-3 h-3 rounded-full" 
-              style={{ backgroundColor: PRICE_COLORS[data.type] }}
+              style={{ backgroundColor: color }}
             />
-            <span className="text-sm font-medium" style={{ color: PRICE_COLORS[data.type] }}>
+            <span className="text-sm font-medium" style={{ color: color }}>
               {info.label}
             </span>
           </div>
