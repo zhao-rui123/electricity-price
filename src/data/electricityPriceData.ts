@@ -656,7 +656,7 @@ export const provinceData: ProvinceData[] = [
     ])
   },
   
-  // 20. 江西省
+  // 20. 江西省 - 修复：尖峰从高峰分离，避免重叠
   {
     name: '江西省',
     hasTimeOfUsePricing: true,
@@ -664,7 +664,7 @@ export const provinceData: ProvinceData[] = [
       { months: [1, 12], slots: [
         { type: '尖峰', startTime: '18:00', endTime: '20:00', description: '尖峰时段' },
         { type: '高峰', startTime: '09:00', endTime: '12:00', description: '高峰上午' },
-        { type: '高峰', startTime: '18:00', endTime: '21:00', description: '高峰晚间' },
+        { type: '高峰', startTime: '20:00', endTime: '21:00', description: '高峰晚间' },
         { type: '平段', startTime: '06:00', endTime: '09:00', description: '平段上午' },
         { type: '平段', startTime: '12:00', endTime: '18:00', description: '平段下午' },
         { type: '平段', startTime: '21:00', endTime: '24:00', description: '平段深夜' },
@@ -677,8 +677,9 @@ export const provinceData: ProvinceData[] = [
         { type: '低谷', startTime: '00:00', endTime: '06:00', description: '低谷时段' },
       ]},
       { months: [7, 8, 9], slots: [
-        { type: '尖峰', startTime: '20:30', endTime: '22:30', description: '尖峰时段（7、8月）' },
-        { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰时段' },
+        { type: '尖峰', startTime: '20:30', endTime: '22:30', description: '尖峰时段' },
+        { type: '高峰', startTime: '17:00', endTime: '20:30', description: '高峰下午' },
+        { type: '高峰', startTime: '22:30', endTime: '23:00', description: '高峰深夜' },
         { type: '平段', startTime: '05:00', endTime: '11:30', description: '平段上午' },
         { type: '平段', startTime: '14:30', endTime: '17:00', description: '平段下午' },
         { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
