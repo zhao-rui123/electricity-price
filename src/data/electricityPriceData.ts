@@ -494,14 +494,15 @@ export const provinceData: ProvinceData[] = [
     ])
   },
   
-  // 13. 上海市
+  // 13. 上海市 - 修复：尖峰从高峰分离，避免重叠
   {
     name: '上海市',
     hasTimeOfUsePricing: true,
     months: createMonthData([
       { months: [7, 8, 9], slots: [
         { type: '尖峰', startTime: '12:00', endTime: '14:00', description: '尖峰时段' },
-        { type: '高峰', startTime: '08:00', endTime: '15:00', description: '高峰上午' },
+        { type: '高峰', startTime: '08:00', endTime: '12:00', description: '高峰上午' },
+        { type: '高峰', startTime: '14:00', endTime: '15:00', description: '高峰下午1' },
         { type: '高峰', startTime: '18:00', endTime: '21:00', description: '高峰晚间' },
         { type: '平段', startTime: '06:00', endTime: '08:00', description: '平段早晨' },
         { type: '平段', startTime: '15:00', endTime: '18:00', description: '平段下午' },
@@ -511,11 +512,13 @@ export const provinceData: ProvinceData[] = [
       { months: [1, 12], slots: [
         { type: '尖峰', startTime: '19:00', endTime: '21:00', description: '尖峰时段' },
         { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
-        { type: '高峰', startTime: '18:00', endTime: '21:00', description: '高峰晚间' },
+        { type: '高峰', startTime: '18:00', endTime: '19:00', description: '高峰下午1' },
+        { type: '高峰', startTime: '21:00', endTime: '22:00', description: '高峰晚间' },
         { type: '平段', startTime: '06:00', endTime: '08:00', description: '平段早晨' },
         { type: '平段', startTime: '11:00', endTime: '18:00', description: '平段白天' },
-        { type: '平段', startTime: '21:00', endTime: '22:00', description: '平段晚间' },
-        { type: '低谷', startTime: '22:00', endTime: '06:00', description: '低谷时段' },
+        { type: '平段', startTime: '22:00', endTime: '24:00', description: '平段深夜' },
+        { type: '低谷', startTime: '00:00', endTime: '06:00', description: '低谷凌晨' },
+        { type: '低谷', startTime: '22:00', endTime: '24:00', description: '低谷深夜' },
       ]},
       { months: [2, 3, 4, 5, 6, 10, 11], slots: [
         { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
