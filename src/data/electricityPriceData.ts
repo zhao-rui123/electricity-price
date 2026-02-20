@@ -144,17 +144,37 @@ export const provinceData: ProvinceData[] = [
     ])
   },
   
-  // 4. 安徽省
+  // 4. 安徽省 - 修复：添加尖峰和深谷时段
   {
     name: '安徽省',
     hasTimeOfUsePricing: true,
+    note: '尖峰：7月15日-8月31日20:00-22:00、12月15日-1月31日19:00-21:00；深谷：每年3天及以上节假日11:00-15:00',
     months: createMonthData([
-      { months: [1, 7, 8, 9, 12], slots: [
+      { months: [1], slots: [
+        { type: '尖峰', startTime: '19:00', endTime: '21:00', description: '尖峰时段（12月15日-1月31日）' },
         { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
         { type: '平段', startTime: '09:00', endTime: '11:00', description: '平段上午' },
         { type: '平段', startTime: '13:00', endTime: '16:00', description: '平段下午' },
         { type: '低谷', startTime: '02:00', endTime: '09:00', description: '低谷凌晨' },
         { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
+        { type: '深谷', startTime: '11:00', endTime: '15:00', description: '深谷时段（节假日）' },
+      ]},
+      { months: [7, 8], slots: [
+        { type: '尖峰', startTime: '20:00', endTime: '22:00', description: '尖峰时段（7月15日-8月31日）' },
+        { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
+        { type: '平段', startTime: '09:00', endTime: '11:00', description: '平段上午' },
+        { type: '平段', startTime: '13:00', endTime: '16:00', description: '平段下午' },
+        { type: '低谷', startTime: '02:00', endTime: '09:00', description: '低谷凌晨' },
+        { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
+        { type: '深谷', startTime: '11:00', endTime: '15:00', description: '深谷时段（节假日）' },
+      ]},
+      { months: [9, 12], slots: [
+        { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
+        { type: '平段', startTime: '09:00', endTime: '11:00', description: '平段上午' },
+        { type: '平段', startTime: '13:00', endTime: '16:00', description: '平段下午' },
+        { type: '低谷', startTime: '02:00', endTime: '09:00', description: '低谷凌晨' },
+        { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
+        { type: '深谷', startTime: '11:00', endTime: '15:00', description: '深谷时段（节假日）' },
       ]},
       { months: [2, 3, 4, 5, 6, 10, 11], slots: [
         { type: '高峰', startTime: '06:00', endTime: '08:00', description: '高峰早晨' },
@@ -164,6 +184,7 @@ export const provinceData: ProvinceData[] = [
         { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
         { type: '低谷', startTime: '11:00', endTime: '14:00', description: '低谷中午' },
         { type: '低谷', startTime: '23:00', endTime: '06:00', description: '低谷凌晨' },
+        { type: '深谷', startTime: '11:00', endTime: '15:00', description: '深谷时段（节假日）' },
       ]},
     ])
   },
