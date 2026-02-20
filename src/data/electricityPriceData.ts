@@ -45,22 +45,11 @@ export const PRICE_COLORS: Record<PriceType, string> = {
   '深谷': '#6366f1',
 };
 
-// 辅助函数：创建全年统一时段
-const createYearRoundData = (timeSlots: TimeSlot[]): MonthData[] => {
-  return Array.from({ length: 12 }, (_, i) => ({
-    month: i + 1,
-    monthName: `${i + 1}月`,
-    hasPeak: timeSlots.some(t => t.type === '尖峰'),
-    hasDeepValley: timeSlots.some(t => t.type === '深谷'),
-    timeSlots: JSON.parse(JSON.stringify(timeSlots)),
-  }));
-};
-
-// 辅助函数：按月份创建数据
-const createMonthData = (monthConfigs: Array<{months: number[], slots: TimeSlot[]}>): MonthData[] => {
+// 辅助函数：创建月份数据
+const createMonthData = (configs: Array<{months: number[], slots: TimeSlot[]}>): MonthData[] => {
   const result: MonthData[] = [];
   for (let m = 1; m <= 12; m++) {
-    const config = monthConfigs.find(c => c.months.includes(m));
+    const config = configs.find(c => c.months.includes(m));
     if (config) {
       result.push({
         month: m,
@@ -74,44 +63,289 @@ const createMonthData = (monthConfigs: Array<{months: number[], slots: TimeSlot[
   return result;
 };
 
+// 1. 河南省 - 高峰含尖峰，尖峰时段单独标注
+// 1,2,12月: 高峰16-24(含尖峰17-19), 低谷0-7, 平段7-16
+// 3-5,9-11月: 高峰16-24, 低谷0-6+11-14, 平段6-11+14-16
+// 6-8月: 高峰16-24(含尖峰20-23), 低谷0-7, 平段7-16
+const henanSlots = {
+  winter: [
+    { type: '高峰', startTime: '16:00', endTime: '17:00', description: '高峰时段' },
+    { type: '尖峰', startTime: '17:00', endTime: '19:00', description: '尖峰时段' },
+    { type: '高峰', startTime: '19:00', endTime: '24:00', description: '高峰时段' },
+    { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷时段' },
+    { type: '平段', startTime: '07:00', endTime: '16:00', description: '平段' },
+  ] as TimeSlot[],
+  springAutumn: [
+    { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
+    { type: '低谷', startTime: '00:00', endTime: '06:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '11:00', endTime: '14:00', description: '低谷中午' },
+    { type: '平段', startTime: '06:00', endTime: '11:00', description: '平段上午' },
+    { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
+  ] as TimeSlot[],
+  summer: [
+    { type: '高峰', startTime: '16:00', endTime: '20:00', description: '高峰时段' },
+    { type: '尖峰', startTime: '20:00', endTime: '23:00', description: '尖峰时段' },
+    { type: '高峰', startTime: '23:00', endTime: '24:00', description: '高峰时段' },
+    { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷时段' },
+    { type: '平段', startTime: '07:00', endTime: '16:00', description: '平段' },
+  ] as TimeSlot[],
+};
+
+// 2. 云南省 - 全年统一
+const yunnanSlots = [
+  { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
+  { type: '高峰', startTime: '18:00', endTime: '24:00', description: '高峰晚间' },
+  { type: '平段', startTime: '00:00', endTime: '02:00', description: '平段凌晨' },
+  { type: '平段', startTime: '06:00', endTime: '07:00', description: '平段早晨' },
+  { type: '平段', startTime: '09:00', endTime: '12:00', description: '平段上午' },
+  { type: '平段', startTime: '16:00', endTime: '18:00', description: '平段下午' },
+  { type: '低谷', startTime: '02:00', endTime: '06:00', description: '低谷凌晨' },
+  { type: '低谷', startTime: '12:00', endTime: '16:00', description: '低谷中午' },
+] as TimeSlot[];
+
+// 3. 江苏省
+const jiangsuSlots = {
+  summerWinter: [
+    { type: '高峰', startTime: '14:00', endTime: '22:00', description: '高峰时段' },
+    { type: '平段', startTime: '06:00', endTime: '11:00', description: '平段上午' },
+    { type: '平段', startTime: '13:00', endTime: '14:00', description: '平段下午' },
+    { type: '平段', startTime: '22:00', endTime: '24:00', description: '平段深夜' },
+    { type: '低谷', startTime: '00:00', endTime: '06:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
+  ] as TimeSlot[],
+  springAutumn: [
+    { type: '高峰', startTime: '15:00', endTime: '22:00', description: '高峰时段' },
+    { type: '平段', startTime: '06:00', endTime: '10:00', description: '平段上午' },
+    { type: '平段', startTime: '14:00', endTime: '15:00', description: '平段下午' },
+    { type: '平段', startTime: '22:00', endTime: '02:00', description: '平段深夜' },
+    { type: '低谷', startTime: '02:00', endTime: '06:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '10:00', endTime: '14:00', description: '低谷中午' },
+  ] as TimeSlot[],
+};
+
+// 4. 安徽省
+const anhuiSlots = {
+  special: [
+    { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
+    { type: '平段', startTime: '09:00', endTime: '11:00', description: '平段上午' },
+    { type: '平段', startTime: '13:00', endTime: '16:00', description: '平段下午' },
+    { type: '低谷', startTime: '02:00', endTime: '09:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
+  ] as TimeSlot[],
+  other: [
+    { type: '高峰', startTime: '06:00', endTime: '08:00', description: '高峰早晨' },
+    { type: '高峰', startTime: '16:00', endTime: '22:00', description: '高峰晚间' },
+    { type: '平段', startTime: '08:00', endTime: '11:00', description: '平段上午' },
+    { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
+    { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段深夜' },
+    { type: '低谷', startTime: '11:00', endTime: '14:00', description: '低谷中午' },
+    { type: '低谷', startTime: '23:00', endTime: '06:00', description: '低谷凌晨' },
+  ] as TimeSlot[],
+};
+
+// 5. 广东省 - 7-9月有尖峰
+const guangdongSlots = {
+  summer: [
+    { type: '尖峰', startTime: '11:00', endTime: '12:00', description: '尖峰时段1' },
+    { type: '尖峰', startTime: '15:00', endTime: '17:00', description: '尖峰时段2' },
+    { type: '高峰', startTime: '10:00', endTime: '11:00', description: '高峰上午' },
+    { type: '高峰', startTime: '12:00', endTime: '14:00', description: '高峰中午' },
+    { type: '高峰', startTime: '17:00', endTime: '19:00', description: '高峰下午' },
+    { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
+    { type: '平段', startTime: '14:00', endTime: '15:00', description: '平段下午1' },
+    { type: '平段', startTime: '19:00', endTime: '24:00', description: '平段晚间' },
+    { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷时段' },
+  ] as TimeSlot[],
+  other: [
+    { type: '高峰', startTime: '10:00', endTime: '12:00', description: '高峰上午' },
+    { type: '高峰', startTime: '14:00', endTime: '19:00', description: '高峰下午' },
+    { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
+    { type: '平段', startTime: '12:00', endTime: '14:00', description: '平段中午' },
+    { type: '平段', startTime: '19:00', endTime: '24:00', description: '平段晚间' },
+    { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷时段' },
+  ] as TimeSlot[],
+};
+
+// 6. 山东省 - 冬季尖峰在高峰内
+const shandongSlots = {
+  winter: [
+    { type: '尖峰', startTime: '17:00', endTime: '22:00', description: '尖峰时段' },
+    { type: '平段', startTime: '07:00', endTime: '09:00', description: '平段上午' },
+    { type: '平段', startTime: '16:00', endTime: '17:00', description: '平段下午' },
+    { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段深夜' },
+    { type: '低谷', startTime: '02:00', endTime: '07:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '09:00', endTime: '16:00', description: '低谷白天' },
+    { type: '平段', startTime: '23:00', endTime: '02:00', description: '平段深夜' },
+  ] as TimeSlot[],
+  summer: [
+    { type: '尖峰', startTime: '17:00', endTime: '22:00', description: '尖峰时段' },
+    { type: '平段', startTime: '07:00', endTime: '09:00', description: '平段上午' },
+    { type: '平段', startTime: '16:00', endTime: '17:00', description: '平段下午' },
+    { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段深夜' },
+    { type: '低谷', startTime: '02:00', endTime: '07:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '09:00', endTime: '16:00', description: '低谷白天' },
+    { type: '平段', startTime: '23:00', endTime: '02:00', description: '平段深夜' },
+  ] as TimeSlot[],
+  other: [
+    { type: '高峰', startTime: '16:00', endTime: '21:00', description: '高峰时段' },
+    { type: '平段', startTime: '07:00', endTime: '09:00', description: '平段上午' },
+    { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
+    { type: '平段', startTime: '21:00', endTime: '23:00', description: '平段深夜' },
+    { type: '低谷', startTime: '02:00', endTime: '07:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '09:00', endTime: '14:00', description: '低谷白天' },
+    { type: '平段', startTime: '23:00', endTime: '02:00', description: '平段深夜' },
+  ] as TimeSlot[],
+};
+
+// 7. 山西省
+const shanxiSlots = {
+  summer: [
+    { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
+    { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰晚间' },
+    { type: '平段', startTime: '07:00', endTime: '08:00', description: '平段早晨' },
+    { type: '平段', startTime: '13:00', endTime: '17:00', description: '平段下午' },
+    { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
+    { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
+  ] as TimeSlot[],
+  winter: [
+    { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰时段' },
+    { type: '平段', startTime: '07:00', endTime: '08:00', description: '平段早晨' },
+    { type: '平段', startTime: '13:00', endTime: '17:00', description: '平段下午' },
+    { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
+    { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
+  ] as TimeSlot[],
+  other: [
+    { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
+    { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰晚间' },
+    { type: '平段', startTime: '07:00', endTime: '08:00', description: '平段早晨' },
+    { type: '平段', startTime: '13:00', endTime: '17:00', description: '平段下午' },
+    { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
+    { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
+  ] as TimeSlot[],
+};
+
+// 8. 北京市 - 尖峰在高峰内
+const beijingSlots = {
+  summer: [
+    { type: '尖峰', startTime: '11:00', endTime: '13:00', description: '尖峰时段1' },
+    { type: '尖峰', startTime: '16:00', endTime: '17:00', description: '尖峰时段2' },
+    { type: '高峰', startTime: '10:00', endTime: '11:00', description: '高峰上午1' },
+    { type: '高峰', startTime: '13:00', endTime: '16:00', description: '高峰下午' },
+    { type: '高峰', startTime: '17:00', endTime: '22:00', description: '高峰晚间' },
+    { type: '平段', startTime: '07:00', endTime: '10:00', description: '平段上午' },
+    { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段深夜' },
+    { type: '低谷', startTime: '23:00', endTime: '07:00', description: '低谷时段' },
+  ] as TimeSlot[],
+  winter: [
+    { type: '尖峰', startTime: '18:00', endTime: '21:00', description: '尖峰时段' },
+    { type: '高峰', startTime: '10:00', endTime: '13:00', description: '高峰上午' },
+    { type: '高峰', startTime: '17:00', endTime: '18:00', description: '高峰下午1' },
+    { type: '高峰', startTime: '21:00', endTime: '22:00', description: '高峰晚间' },
+    { type: '平段', startTime: '07:00', endTime: '10:00', description: '平段上午' },
+    { type: '平段', startTime: '13:00', endTime: '17:00', description: '平段下午' },
+    { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段深夜' },
+    { type: '低谷', startTime: '23:00', endTime: '07:00', description: '低谷时段' },
+  ] as TimeSlot[],
+  other: [
+    { type: '高峰', startTime: '10:00', endTime: '13:00', description: '高峰上午' },
+    { type: '高峰', startTime: '17:00', endTime: '22:00', description: '高峰晚间' },
+    { type: '平段', startTime: '07:00', endTime: '10:00', description: '平段上午' },
+    { type: '平段', startTime: '13:00', endTime: '17:00', description: '平段下午' },
+    { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段深夜' },
+    { type: '低谷', startTime: '23:00', endTime: '07:00', description: '低谷时段' },
+  ] as TimeSlot[],
+};
+
+// 9. 河北省（北网）
+const hebeiNorthSlots = {
+  summer: [
+    { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
+    { type: '高峰', startTime: '13:00', endTime: '17:00', description: '高峰下午' },
+    { type: '高峰', startTime: '21:00', endTime: '22:00', description: '高峰晚间' },
+    { type: '平段', startTime: '07:00', endTime: '08:00', description: '平段早晨' },
+    { type: '平段', startTime: '11:00', endTime: '13:00', description: '平段中午' },
+    { type: '平段', startTime: '17:00', endTime: '21:00', description: '平段下午' },
+    { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段深夜' },
+    { type: '低谷', startTime: '23:00', endTime: '07:00', description: '低谷时段' },
+  ] as TimeSlot[],
+  winter: [
+    { type: '高峰', startTime: '17:00', endTime: '19:00', description: '高峰下午1' },
+    { type: '高峰', startTime: '21:00', endTime: '23:00', description: '高峰晚间' },
+    { type: '平段', startTime: '07:00', endTime: '17:00', description: '平段白天' },
+    { type: '平段', startTime: '19:00', endTime: '21:00', description: '平段傍晚' },
+    { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
+    { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷时段' },
+  ] as TimeSlot[],
+  other: [
+    { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
+    { type: '高峰', startTime: '16:00', endTime: '18:00', description: '高峰下午' },
+    { type: '高峰', startTime: '21:00', endTime: '23:00', description: '高峰晚间' },
+    { type: '平段', startTime: '07:00', endTime: '08:00', description: '平段早晨' },
+    { type: '平段', startTime: '11:00', endTime: '16:00', description: '平段白天' },
+    { type: '平段', startTime: '18:00', endTime: '21:00', description: '平段傍晚' },
+    { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
+    { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷时段' },
+  ] as TimeSlot[],
+};
+
+// 10. 河北省（南网）
+const hebeiSouthSlots = {
+  spring: [
+    { type: '深谷', startTime: '12:00', endTime: '15:00', description: '深谷时段' },
+    { type: '低谷', startTime: '03:00', endTime: '07:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '11:00', endTime: '12:00', description: '低谷中午' },
+    { type: '平段', startTime: '00:00', endTime: '03:00', description: '平段深夜' },
+    { type: '平段', startTime: '07:00', endTime: '11:00', description: '平段上午' },
+    { type: '平段', startTime: '15:00', endTime: '16:00', description: '平段下午' },
+    { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
+  ] as TimeSlot[],
+  summer: [
+    { type: '尖峰', startTime: '19:00', endTime: '22:00', description: '尖峰时段' },
+    { type: '高峰', startTime: '16:00', endTime: '19:00', description: '高峰下午' },
+    { type: '高峰', startTime: '22:00', endTime: '24:00', description: '高峰深夜' },
+    { type: '平段', startTime: '00:00', endTime: '01:00', description: '平段深夜' },
+    { type: '平段', startTime: '07:00', endTime: '12:00', description: '平段上午' },
+    { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
+    { type: '低谷', startTime: '01:00', endTime: '07:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '12:00', endTime: '14:00', description: '低谷中午' },
+  ] as TimeSlot[],
+  autumn: [
+    { type: '深谷', startTime: '12:00', endTime: '14:00', description: '深谷时段' },
+    { type: '低谷', startTime: '02:00', endTime: '06:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '11:00', endTime: '12:00', description: '低谷中午1' },
+    { type: '低谷', startTime: '14:00', endTime: '15:00', description: '低谷中午2' },
+    { type: '平段', startTime: '00:00', endTime: '02:00', description: '平段深夜' },
+    { type: '平段', startTime: '06:00', endTime: '11:00', description: '平段上午' },
+    { type: '平段', startTime: '15:00', endTime: '16:00', description: '平段下午' },
+    { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
+  ] as TimeSlot[],
+  winter: [
+    { type: '尖峰', startTime: '17:00', endTime: '19:00', description: '尖峰时段' },
+    { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
+    { type: '高峰', startTime: '19:00', endTime: '23:00', description: '高峰晚间' },
+    { type: '平段', startTime: '00:00', endTime: '02:00', description: '平段深夜' },
+    { type: '平段', startTime: '06:00', endTime: '07:00', description: '平段早晨' },
+    { type: '平段', startTime: '09:00', endTime: '11:00', description: '平段上午' },
+    { type: '平段', startTime: '15:00', endTime: '17:00', description: '平段下午' },
+    { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜2' },
+    { type: '低谷', startTime: '02:00', endTime: '06:00', description: '低谷凌晨' },
+    { type: '低谷', startTime: '11:00', endTime: '15:00', description: '低谷中午' },
+  ] as TimeSlot[],
+};
+
 // 31省份数据
 export const provinceData: ProvinceData[] = [
-  // 1. 河南省 - 修复：尖峰时段从高峰中分离，避免重叠
+  // 1. 河南省
   {
     name: '河南省',
     hasTimeOfUsePricing: true,
     months: createMonthData([
-      { months: [1, 12], slots: [
-        { type: '尖峰', startTime: '17:00', endTime: '19:00', description: '尖峰时段' },
-        { type: '高峰', startTime: '16:00', endTime: '17:00', description: '高峰时段1' },
-        { type: '高峰', startTime: '19:00', endTime: '24:00', description: '高峰时段2' },
-        { type: '平段', startTime: '07:00', endTime: '16:00', description: '平段' },
-        { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷时段' },
-      ]},
-      { months: [2], slots: [
-        { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
-        { type: '平段', startTime: '07:00', endTime: '16:00', description: '平段' },
-        { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷时段' },
-      ]},
-      { months: [3, 4, 5, 9, 10, 11], slots: [
-        { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
-        { type: '平段', startTime: '06:00', endTime: '11:00', description: '平段上午' },
-        { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
-        { type: '低谷', startTime: '00:00', endTime: '06:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '14:00', description: '低谷中午' },
-      ]},
-      { months: [6], slots: [
-        { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
-        { type: '平段', startTime: '07:00', endTime: '16:00', description: '平段' },
-        { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷时段' },
-      ]},
-      { months: [7, 8], slots: [
-        { type: '尖峰', startTime: '20:00', endTime: '23:00', description: '尖峰时段' },
-        { type: '高峰', startTime: '16:00', endTime: '20:00', description: '高峰时段1' },
-        { type: '高峰', startTime: '23:00', endTime: '24:00', description: '高峰时段2' },
-        { type: '平段', startTime: '07:00', endTime: '16:00', description: '平段' },
-        { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷时段' },
-      ]},
+      { months: [1, 2, 12], slots: henanSlots.winter },
+      { months: [3, 4, 5, 9, 10, 11], slots: henanSlots.springAutumn },
+      { months: [6, 7, 8], slots: henanSlots.summer },
     ])
   },
   
@@ -120,16 +354,13 @@ export const provinceData: ProvinceData[] = [
     name: '云南省',
     hasTimeOfUsePricing: true,
     note: '尖峰暂缓执行',
-    months: createYearRoundData([
-      { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
-      { type: '高峰', startTime: '18:00', endTime: '24:00', description: '高峰晚间' },
-      { type: '平段', startTime: '00:00', endTime: '02:00', description: '平段凌晨' },
-      { type: '平段', startTime: '06:00', endTime: '07:00', description: '平段早晨' },
-      { type: '平段', startTime: '09:00', endTime: '12:00', description: '平段上午' },
-      { type: '平段', startTime: '16:00', endTime: '18:00', description: '平段下午' },
-      { type: '低谷', startTime: '02:00', endTime: '06:00', description: '低谷凌晨' },
-      { type: '低谷', startTime: '12:00', endTime: '16:00', description: '低谷中午' },
-    ])
+    months: Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      monthName: `${i + 1}月`,
+      hasPeak: false,
+      hasDeepValley: false,
+      timeSlots: JSON.parse(JSON.stringify(yunnanSlots)),
+    }))
   },
   
   // 3. 江苏省
@@ -137,139 +368,39 @@ export const provinceData: ProvinceData[] = [
     name: '江苏省',
     hasTimeOfUsePricing: true,
     months: createMonthData([
-      { months: [1, 2, 6, 7, 8, 12], slots: [
-        { type: '高峰', startTime: '14:00', endTime: '22:00', description: '高峰时段' },
-        { type: '平段', startTime: '06:00', endTime: '11:00', description: '平段上午' },
-        { type: '平段', startTime: '13:00', endTime: '14:00', description: '平段下午' },
-        { type: '平段', startTime: '22:00', endTime: '24:00', description: '平段晚间' },
-        { type: '低谷', startTime: '00:00', endTime: '06:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
-      ]},
-      { months: [3, 4, 5, 9, 10, 11], slots: [
-        { type: '高峰', startTime: '15:00', endTime: '22:00', description: '高峰时段' },
-        { type: '平段', startTime: '06:00', endTime: '10:00', description: '平段上午' },
-        { type: '平段', startTime: '14:00', endTime: '15:00', description: '平段下午' },
-        { type: '平段', startTime: '22:00', endTime: '02:00', description: '平段晚间' },
-        { type: '低谷', startTime: '02:00', endTime: '06:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '10:00', endTime: '14:00', description: '低谷中午' },
-      ]},
+      { months: [1, 2, 6, 7, 8, 12], slots: jiangsuSlots.summerWinter },
+      { months: [3, 4, 5, 9, 10, 11], slots: jiangsuSlots.springAutumn },
     ])
   },
   
-  // 4. 安徽省 - 修复：尖峰从高峰分离、深谷从低谷分离，避免时段重叠
+  // 4. 安徽省
   {
     name: '安徽省',
     hasTimeOfUsePricing: true,
-    note: '尖峰：7月15日-8月31日20:00-22:00、12月15日-1月31日19:00-21:00；深谷：每年3天及以上节假日11:00-15:00',
     months: createMonthData([
-      { months: [1], slots: [
-        { type: '尖峰', startTime: '19:00', endTime: '21:00', description: '尖峰时段' },
-        { type: '高峰', startTime: '16:00', endTime: '19:00', description: '高峰时段1' },
-        { type: '高峰', startTime: '21:00', endTime: '24:00', description: '高峰时段2' },
-        { type: '平段', startTime: '09:00', endTime: '11:00', description: '平段上午' },
-        { type: '平段', startTime: '13:00', endTime: '16:00', description: '平段下午' },
-        { type: '低谷', startTime: '02:00', endTime: '09:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
-        { type: '深谷', startTime: '11:00', endTime: '15:00', description: '深谷时段（节假日）' },
-      ]},
-      { months: [7, 8], slots: [
-        { type: '尖峰', startTime: '20:00', endTime: '22:00', description: '尖峰时段' },
-        { type: '高峰', startTime: '16:00', endTime: '20:00', description: '高峰时段1' },
-        { type: '高峰', startTime: '22:00', endTime: '24:00', description: '高峰时段2' },
-        { type: '平段', startTime: '09:00', endTime: '11:00', description: '平段上午' },
-        { type: '平段', startTime: '13:00', endTime: '16:00', description: '平段下午' },
-        { type: '低谷', startTime: '02:00', endTime: '09:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
-        { type: '深谷', startTime: '11:00', endTime: '15:00', description: '深谷时段（节假日）' },
-      ]},
-      { months: [9, 12], slots: [
-        { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
-        { type: '平段', startTime: '09:00', endTime: '11:00', description: '平段上午' },
-        { type: '平段', startTime: '13:00', endTime: '16:00', description: '平段下午' },
-        { type: '低谷', startTime: '02:00', endTime: '09:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
-        { type: '深谷', startTime: '11:00', endTime: '15:00', description: '深谷时段（节假日）' },
-      ]},
-      { months: [2, 3, 4, 5, 6, 10, 11], slots: [
-        { type: '高峰', startTime: '06:00', endTime: '08:00', description: '高峰早晨' },
-        { type: '高峰', startTime: '16:00', endTime: '22:00', description: '高峰晚间' },
-        { type: '平段', startTime: '08:00', endTime: '11:00', description: '平段上午' },
-        { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
-        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
-        { type: '低谷', startTime: '11:00', endTime: '14:00', description: '低谷中午' },
-        { type: '低谷', startTime: '23:00', endTime: '06:00', description: '低谷凌晨' },
-        { type: '深谷', startTime: '11:00', endTime: '15:00', description: '深谷时段（节假日）' },
-      ]},
+      { months: [1, 7, 8, 9, 12], slots: anhuiSlots.special },
+      { months: [2, 3, 4, 5, 6, 10, 11], slots: anhuiSlots.other },
     ])
   },
   
-  // 5. 广东省（珠三角五市）- 修复：7-9月有尖峰，其他月份无尖峰，补充12:00-14:00平段
+  // 5. 广东省（珠三角五市）
   {
     name: '广东省（珠三角五市）',
     hasTimeOfUsePricing: true,
     months: createMonthData([
-      { months: [7, 8, 9], slots: [
-        { type: '尖峰', startTime: '11:00', endTime: '12:00', description: '尖峰时段1' },
-        { type: '尖峰', startTime: '15:00', endTime: '17:00', description: '尖峰时段2' },
-        { type: '高峰', startTime: '10:00', endTime: '12:00', description: '高峰上午' },
-        { type: '高峰', startTime: '14:00', endTime: '19:00', description: '高峰下午' },
-        { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
-        { type: '平段', startTime: '12:00', endTime: '14:00', description: '平段中午' },
-        { type: '平段', startTime: '19:00', endTime: '24:00', description: '平段晚间' },
-        { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷时段' },
-      ]},
-      { months: [1, 2, 3, 4, 5, 6, 10, 11, 12], slots: [
-        { type: '高峰', startTime: '10:00', endTime: '12:00', description: '高峰上午' },
-        { type: '高峰', startTime: '14:00', endTime: '19:00', description: '高峰下午' },
-        { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
-        { type: '平段', startTime: '12:00', endTime: '14:00', description: '平段中午' },
-        { type: '平段', startTime: '19:00', endTime: '24:00', description: '平段晚间' },
-        { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷时段' },
-      ]},
+      { months: [7, 8, 9], slots: guangdongSlots.summer },
+      { months: [1, 2, 3, 4, 5, 6, 10, 11, 12], slots: guangdongSlots.other },
     ])
   },
   
-  // 6. 山东省 - 修复：尖峰从高峰分离，避免重叠
+  // 6. 山东省
   {
     name: '山东省',
     hasTimeOfUsePricing: true,
     months: createMonthData([
-      { months: [1, 12], slots: [
-        { type: '尖峰', startTime: '17:00', endTime: '22:00', description: '尖峰时段' },
-        { type: '平段', startTime: '07:00', endTime: '09:00', description: '平段上午' },
-        { type: '平段', startTime: '16:00', endTime: '17:00', description: '平段下午1' },
-        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
-        { type: '低谷', startTime: '02:00', endTime: '07:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '09:00', endTime: '16:00', description: '低谷白天' },
-        { type: '低谷', startTime: '23:00', endTime: '02:00', description: '低谷深夜' },
-      ]},
-      { months: [2], slots: [
-        { type: '高峰', startTime: '17:00', endTime: '22:00', description: '高峰时段' },
-        { type: '平段', startTime: '07:00', endTime: '09:00', description: '平段上午' },
-        { type: '平段', startTime: '16:00', endTime: '17:00', description: '平段下午1' },
-        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
-        { type: '低谷', startTime: '02:00', endTime: '07:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '09:00', endTime: '16:00', description: '低谷白天' },
-        { type: '低谷', startTime: '23:00', endTime: '02:00', description: '低谷深夜' },
-      ]},
-      { months: [7, 8], slots: [
-        { type: '尖峰', startTime: '17:00', endTime: '22:00', description: '尖峰时段' },
-        { type: '平段', startTime: '07:00', endTime: '09:00', description: '平段上午' },
-        { type: '平段', startTime: '16:00', endTime: '17:00', description: '平段下午1' },
-        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
-        { type: '低谷', startTime: '02:00', endTime: '07:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '09:00', endTime: '16:00', description: '低谷白天' },
-        { type: '低谷', startTime: '23:00', endTime: '02:00', description: '低谷深夜' },
-      ]},
-      { months: [3, 4, 5, 6, 9, 10, 11], slots: [
-        { type: '高峰', startTime: '16:00', endTime: '21:00', description: '高峰时段' },
-        { type: '平段', startTime: '07:00', endTime: '09:00', description: '平段上午' },
-        { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
-        { type: '平段', startTime: '21:00', endTime: '23:00', description: '平段晚间' },
-        { type: '低谷', startTime: '02:00', endTime: '07:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '09:00', endTime: '14:00', description: '低谷白天' },
-        { type: '低谷', startTime: '23:00', endTime: '02:00', description: '低谷深夜' },
-      ]},
+      { months: [1, 2, 12], slots: shandongSlots.winter },
+      { months: [7, 8], slots: shandongSlots.summer },
+      { months: [3, 4, 5, 6, 9, 10, 11], slots: shandongSlots.other },
     ])
   },
   
@@ -278,68 +409,20 @@ export const provinceData: ProvinceData[] = [
     name: '山西省',
     hasTimeOfUsePricing: true,
     months: createMonthData([
-      { months: [7, 8], slots: [
-        { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
-        { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰晚间' },
-        { type: '平段', startTime: '07:00', endTime: '08:00', description: '平段早晨' },
-        { type: '平段', startTime: '13:00', endTime: '17:00', description: '平段下午' },
-        { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段晚间' },
-        { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
-      ]},
-      { months: [1, 12], slots: [
-        { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰时段' },
-        { type: '平段', startTime: '07:00', endTime: '08:00', description: '平段早晨' },
-        { type: '平段', startTime: '13:00', endTime: '17:00', description: '平段下午' },
-        { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段晚间' },
-        { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
-      ]},
-      { months: [2, 3, 4, 5, 6, 9, 10, 11], slots: [
-        { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
-        { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰晚间' },
-        { type: '平段', startTime: '07:00', endTime: '08:00', description: '平段早晨' },
-        { type: '平段', startTime: '13:00', endTime: '17:00', description: '平段下午' },
-        { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段晚间' },
-        { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '13:00', description: '低谷中午' },
-      ]},
+      { months: [7, 8], slots: shanxiSlots.summer },
+      { months: [1, 12], slots: shanxiSlots.winter },
+      { months: [2, 3, 4, 5, 6, 9, 10, 11], slots: shanxiSlots.other },
     ])
   },
   
-  // 8. 北京市 - 修复：补充所有月份，尖峰从高峰分离避免重叠
+  // 8. 北京市
   {
     name: '北京市',
     hasTimeOfUsePricing: true,
     months: createMonthData([
-      { months: [7, 8], slots: [
-        { type: '尖峰', startTime: '11:00', endTime: '13:00', description: '尖峰时段1' },
-        { type: '尖峰', startTime: '16:00', endTime: '17:00', description: '尖峰时段2' },
-        { type: '高峰', startTime: '10:00', endTime: '11:00', description: '高峰上午1' },
-        { type: '高峰', startTime: '13:00', endTime: '16:00', description: '高峰下午' },
-        { type: '高峰', startTime: '17:00', endTime: '22:00', description: '高峰晚间' },
-        { type: '平段', startTime: '07:00', endTime: '10:00', description: '平段上午' },
-        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
-        { type: '低谷', startTime: '23:00', endTime: '07:00', description: '低谷时段' },
-      ]},
-      { months: [1, 12], slots: [
-        { type: '尖峰', startTime: '18:00', endTime: '21:00', description: '尖峰时段' },
-        { type: '高峰', startTime: '10:00', endTime: '13:00', description: '高峰上午' },
-        { type: '高峰', startTime: '17:00', endTime: '18:00', description: '高峰下午1' },
-        { type: '高峰', startTime: '21:00', endTime: '22:00', description: '高峰晚间' },
-        { type: '平段', startTime: '07:00', endTime: '10:00', description: '平段上午' },
-        { type: '平段', startTime: '13:00', endTime: '17:00', description: '平段下午' },
-        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
-        { type: '低谷', startTime: '23:00', endTime: '07:00', description: '低谷时段' },
-      ]},
-      { months: [2, 3, 4, 5, 6, 9, 10, 11], slots: [
-        { type: '高峰', startTime: '10:00', endTime: '13:00', description: '高峰上午' },
-        { type: '高峰', startTime: '17:00', endTime: '22:00', description: '高峰晚间' },
-        { type: '平段', startTime: '07:00', endTime: '10:00', description: '平段上午' },
-        { type: '平段', startTime: '13:00', endTime: '17:00', description: '平段下午' },
-        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
-        { type: '低谷', startTime: '23:00', endTime: '07:00', description: '低谷时段' },
-      ]},
+      { months: [7, 8], slots: beijingSlots.summer },
+      { months: [1, 12], slots: beijingSlots.winter },
+      { months: [2, 3, 4, 5, 6, 9, 10, 11], slots: beijingSlots.other },
     ])
   },
   
@@ -348,34 +431,9 @@ export const provinceData: ProvinceData[] = [
     name: '河北省（北网）',
     hasTimeOfUsePricing: true,
     months: createMonthData([
-      { months: [6, 7, 8], slots: [
-        { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
-        { type: '高峰', startTime: '13:00', endTime: '17:00', description: '高峰下午' },
-        { type: '高峰', startTime: '21:00', endTime: '22:00', description: '高峰晚间' },
-        { type: '平段', startTime: '07:00', endTime: '08:00', description: '平段早晨' },
-        { type: '平段', startTime: '11:00', endTime: '13:00', description: '平段中午' },
-        { type: '平段', startTime: '17:00', endTime: '21:00', description: '平段下午' },
-        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
-        { type: '低谷', startTime: '23:00', endTime: '07:00', description: '低谷时段' },
-      ]},
-      { months: [1, 2, 12], slots: [
-        { type: '高峰', startTime: '17:00', endTime: '19:00', description: '高峰下午1' },
-        { type: '高峰', startTime: '21:00', endTime: '23:00', description: '高峰晚间' },
-        { type: '平段', startTime: '07:00', endTime: '17:00', description: '平段白天' },
-        { type: '平段', startTime: '19:00', endTime: '21:00', description: '平段傍晚' },
-        { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
-        { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷时段' },
-      ]},
-      { months: [3, 4, 5, 9, 10, 11], slots: [
-        { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
-        { type: '高峰', startTime: '16:00', endTime: '18:00', description: '高峰下午' },
-        { type: '高峰', startTime: '21:00', endTime: '23:00', description: '高峰晚间' },
-        { type: '平段', startTime: '07:00', endTime: '08:00', description: '平段早晨' },
-        { type: '平段', startTime: '11:00', endTime: '16:00', description: '平段白天' },
-        { type: '平段', startTime: '18:00', endTime: '21:00', description: '平段傍晚' },
-        { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
-        { type: '低谷', startTime: '00:00', endTime: '07:00', description: '低谷时段' },
-      ]},
+      { months: [6, 7, 8], slots: hebeiNorthSlots.summer },
+      { months: [1, 2, 12], slots: hebeiNorthSlots.winter },
+      { months: [3, 4, 5, 9, 10, 11], slots: hebeiNorthSlots.other },
     ])
   },
   
@@ -384,47 +442,10 @@ export const provinceData: ProvinceData[] = [
     name: '河北省（南网）',
     hasTimeOfUsePricing: true,
     months: createMonthData([
-      { months: [3, 4, 5], slots: [
-        { type: '深谷', startTime: '12:00', endTime: '15:00', description: '深谷时段' },
-        { type: '低谷', startTime: '03:00', endTime: '07:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '12:00', description: '低谷中午' },
-        { type: '平段', startTime: '00:00', endTime: '03:00', description: '平段深夜' },
-        { type: '平段', startTime: '07:00', endTime: '11:00', description: '平段上午' },
-        { type: '平段', startTime: '15:00', endTime: '16:00', description: '平段下午' },
-        { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
-      ]},
-      { months: [6, 7, 8], slots: [
-        { type: '尖峰', startTime: '19:00', endTime: '22:00', description: '尖峰时段' },
-        { type: '高峰', startTime: '16:00', endTime: '19:00', description: '高峰下午' },
-        { type: '高峰', startTime: '22:00', endTime: '24:00', description: '高峰晚间' },
-        { type: '平段', startTime: '00:00', endTime: '01:00', description: '平段深夜' },
-        { type: '平段', startTime: '07:00', endTime: '12:00', description: '平段上午' },
-        { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
-        { type: '低谷', startTime: '01:00', endTime: '07:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '12:00', endTime: '14:00', description: '低谷中午' },
-      ]},
-      { months: [9, 10, 11], slots: [
-        { type: '深谷', startTime: '12:00', endTime: '14:00', description: '深谷时段' },
-        { type: '低谷', startTime: '02:00', endTime: '06:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '12:00', description: '低谷中午1' },
-        { type: '低谷', startTime: '14:00', endTime: '15:00', description: '低谷中午2' },
-        { type: '平段', startTime: '00:00', endTime: '02:00', description: '平段深夜' },
-        { type: '平段', startTime: '06:00', endTime: '11:00', description: '平段上午' },
-        { type: '平段', startTime: '15:00', endTime: '16:00', description: '平段下午' },
-        { type: '高峰', startTime: '16:00', endTime: '24:00', description: '高峰时段' },
-      ]},
-      { months: [1, 2, 12], slots: [
-        { type: '尖峰', startTime: '17:00', endTime: '19:00', description: '尖峰时段' },
-        { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
-        { type: '高峰', startTime: '19:00', endTime: '23:00', description: '高峰晚间' },
-        { type: '平段', startTime: '00:00', endTime: '02:00', description: '平段深夜' },
-        { type: '平段', startTime: '06:00', endTime: '07:00', description: '平段早晨' },
-        { type: '平段', startTime: '09:00', endTime: '11:00', description: '平段上午' },
-        { type: '平段', startTime: '15:00', endTime: '17:00', description: '平段下午' },
-        { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜2' },
-        { type: '低谷', startTime: '02:00', endTime: '06:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '11:00', endTime: '15:00', description: '低谷中午' },
-      ]},
+      { months: [3, 4, 5], slots: hebeiSouthSlots.spring },
+      { months: [6, 7, 8], slots: hebeiSouthSlots.summer },
+      { months: [9, 10, 11], slots: hebeiSouthSlots.autumn },
+      { months: [1, 2, 12], slots: hebeiSouthSlots.winter },
     ])
   },
   
@@ -436,7 +457,7 @@ export const provinceData: ProvinceData[] = [
       { months: [6, 7, 8], slots: [
         { type: '尖峰', startTime: '18:00', endTime: '21:00', description: '尖峰时段' },
         { type: '高峰', startTime: '10:00', endTime: '12:00', description: '高峰上午' },
-        { type: '高峰', startTime: '16:00', endTime: '18:00', description: '高峰下午' },
+        { type: '高峰', startTime: '16:00', endTime: '18:00', description: '高峰下午1' },
         { type: '高峰', startTime: '21:00', endTime: '22:00', description: '高峰晚间' },
         { type: '平段', startTime: '07:00', endTime: '10:00', description: '平段上午' },
         { type: '平段', startTime: '12:00', endTime: '16:00', description: '平段中午' },
@@ -446,7 +467,7 @@ export const provinceData: ProvinceData[] = [
       { months: [1, 11, 12], slots: [
         { type: '尖峰', startTime: '17:00', endTime: '19:00', description: '尖峰时段' },
         { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
-        { type: '高峰', startTime: '16:00', endTime: '17:00', description: '高峰下午' },
+        { type: '高峰', startTime: '16:00', endTime: '17:00', description: '高峰下午1' },
         { type: '高峰', startTime: '19:00', endTime: '22:00', description: '高峰晚间' },
         { type: '平段', startTime: '00:00', endTime: '07:00', description: '平段凌晨' },
         { type: '平段', startTime: '09:00', endTime: '12:00', description: '平段上午' },
@@ -494,7 +515,7 @@ export const provinceData: ProvinceData[] = [
     ])
   },
   
-  // 13. 上海市 - 修复：尖峰从高峰分离，避免重叠
+  // 13. 上海市
   {
     name: '上海市',
     hasTimeOfUsePricing: true,
@@ -502,30 +523,29 @@ export const provinceData: ProvinceData[] = [
       { months: [7, 8, 9], slots: [
         { type: '尖峰', startTime: '12:00', endTime: '14:00', description: '尖峰时段' },
         { type: '高峰', startTime: '08:00', endTime: '12:00', description: '高峰上午' },
-        { type: '高峰', startTime: '14:00', endTime: '15:00', description: '高峰下午1' },
+        { type: '高峰', startTime: '14:00', endTime: '15:00', description: '高峰中午' },
         { type: '高峰', startTime: '18:00', endTime: '21:00', description: '高峰晚间' },
         { type: '平段', startTime: '06:00', endTime: '08:00', description: '平段早晨' },
         { type: '平段', startTime: '15:00', endTime: '18:00', description: '平段下午' },
-        { type: '平段', startTime: '21:00', endTime: '22:00', description: '平段晚间' },
+        { type: '平段', startTime: '21:00', endTime: '22:00', description: '平段深夜' },
         { type: '低谷', startTime: '22:00', endTime: '06:00', description: '低谷时段' },
       ]},
       { months: [1, 12], slots: [
         { type: '尖峰', startTime: '19:00', endTime: '21:00', description: '尖峰时段' },
         { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
-        { type: '高峰', startTime: '18:00', endTime: '19:00', description: '高峰下午1' },
-        { type: '高峰', startTime: '21:00', endTime: '22:00', description: '高峰晚间' },
+        { type: '高峰', startTime: '18:00', endTime: '19:00', description: '高峰傍晚' },
+        { type: '高峰', startTime: '21:00', endTime: '22:00', description: '高峰深夜' },
         { type: '平段', startTime: '06:00', endTime: '08:00', description: '平段早晨' },
         { type: '平段', startTime: '11:00', endTime: '18:00', description: '平段白天' },
-        { type: '平段', startTime: '22:00', endTime: '24:00', description: '平段深夜' },
-        { type: '低谷', startTime: '00:00', endTime: '06:00', description: '低谷凌晨' },
-        { type: '低谷', startTime: '22:00', endTime: '24:00', description: '低谷深夜' },
+        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段深夜' },
+        { type: '低谷', startTime: '23:00', endTime: '06:00', description: '低谷时段' },
       ]},
       { months: [2, 3, 4, 5, 6, 10, 11], slots: [
         { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
         { type: '高峰', startTime: '18:00', endTime: '21:00', description: '高峰晚间' },
         { type: '平段', startTime: '06:00', endTime: '08:00', description: '平段早晨' },
         { type: '平段', startTime: '11:00', endTime: '18:00', description: '平段白天' },
-        { type: '平段', startTime: '21:00', endTime: '22:00', description: '平段晚间' },
+        { type: '平段', startTime: '21:00', endTime: '22:00', description: '平段深夜' },
         { type: '低谷', startTime: '22:00', endTime: '06:00', description: '低谷时段' },
       ]},
     ])
@@ -568,18 +588,24 @@ export const provinceData: ProvinceData[] = [
     name: '黑龙江省',
     hasTimeOfUsePricing: true,
     note: '尖峰电价暂停执行',
-    months: createYearRoundData([
-      { type: '高峰', startTime: '07:00', endTime: '08:00', description: '高峰早晨' },
-      { type: '高峰', startTime: '09:00', endTime: '11:30', description: '高峰上午' },
-      { type: '高峰', startTime: '15:30', endTime: '20:00', description: '高峰下午' },
-      { type: '平段', startTime: '08:00', endTime: '09:00', description: '平段上午' },
-      { type: '平段', startTime: '11:30', endTime: '12:00', description: '平段中午' },
-      { type: '平段', startTime: '14:00', endTime: '15:30', description: '平段下午' },
-      { type: '平段', startTime: '20:00', endTime: '23:30', description: '平段晚间' },
-      { type: '低谷', startTime: '12:00', endTime: '14:00', description: '低谷中午' },
-      { type: '低谷', startTime: '23:30', endTime: '05:30', description: '低谷凌晨' },
-      { type: '平段', startTime: '05:30', endTime: '07:00', description: '平段早晨' },
-    ])
+    months: Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      monthName: `${i + 1}月`,
+      hasPeak: false,
+      hasDeepValley: false,
+      timeSlots: [
+        { type: '高峰', startTime: '07:00', endTime: '08:00', description: '高峰早晨' },
+        { type: '高峰', startTime: '09:00', endTime: '11:30', description: '高峰上午' },
+        { type: '高峰', startTime: '15:30', endTime: '20:00', description: '高峰下午' },
+        { type: '平段', startTime: '08:00', endTime: '09:00', description: '平段上午' },
+        { type: '平段', startTime: '11:30', endTime: '12:00', description: '平段中午' },
+        { type: '平段', startTime: '14:00', endTime: '15:30', description: '平段下午' },
+        { type: '平段', startTime: '20:00', endTime: '23:30', description: '平段晚间' },
+        { type: '平段', startTime: '05:30', endTime: '07:00', description: '平段凌晨' },
+        { type: '低谷', startTime: '12:00', endTime: '14:00', description: '低谷中午' },
+        { type: '低谷', startTime: '23:30', endTime: '05:30', description: '低谷凌晨' },
+      ],
+    }))
   },
   
   // 16. 辽宁省 - 不执行分时电价
@@ -595,20 +621,26 @@ export const provinceData: ProvinceData[] = [
     name: '吉林省',
     hasTimeOfUsePricing: true,
     note: '尖峰电价调整为灵活启动机制',
-    months: createYearRoundData([
-      { type: '高峰', startTime: '08:00', endTime: '10:00', description: '高峰上午' },
-      { type: '高峰', startTime: '16:00', endTime: '21:00', description: '高峰晚间' },
-      { type: '平段', startTime: '05:00', endTime: '08:00', description: '平段早晨' },
-      { type: '平段', startTime: '10:00', endTime: '11:00', description: '平段上午' },
-      { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
-      { type: '平段', startTime: '21:00', endTime: '23:00', description: '平段晚间' },
-      { type: '低谷', startTime: '00:00', endTime: '05:00', description: '低谷凌晨' },
-      { type: '低谷', startTime: '11:00', endTime: '14:00', description: '低谷中午' },
-      { type: '低谷', startTime: '23:00', endTime: '24:00', description: '低谷深夜' },
-    ])
+    months: Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      monthName: `${i + 1}月`,
+      hasPeak: false,
+      hasDeepValley: false,
+      timeSlots: [
+        { type: '高峰', startTime: '08:00', endTime: '10:00', description: '高峰上午' },
+        { type: '高峰', startTime: '16:00', endTime: '21:00', description: '高峰晚间' },
+        { type: '平段', startTime: '05:00', endTime: '08:00', description: '平段早晨' },
+        { type: '平段', startTime: '10:00', endTime: '11:00', description: '平段上午' },
+        { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
+        { type: '平段', startTime: '21:00', endTime: '23:00', description: '平段深夜' },
+        { type: '低谷', startTime: '00:00', endTime: '05:00', description: '低谷凌晨' },
+        { type: '低谷', startTime: '11:00', endTime: '14:00', description: '低谷中午' },
+        { type: '低谷', startTime: '23:00', endTime: '24:00', description: '低谷深夜' },
+      ],
+    }))
   },
   
-  // 18. 内蒙古东部 - 修复：尖峰从高峰分离，避免重叠
+  // 18. 内蒙古东部
   {
     name: '内蒙古东部',
     hasTimeOfUsePricing: true,
@@ -634,7 +666,7 @@ export const provinceData: ProvinceData[] = [
         { type: '平段', startTime: '21:00', endTime: '24:00', description: '平段深夜' },
         { type: '低谷', startTime: '00:00', endTime: '04:00', description: '低谷时段' },
       ]},
-      { months: [2, 3, 4, 5, 6, 7, 8, 9, 10], slots: [
+      { months: [2, 3, 4, 5, 9, 10], slots: [
         { type: '高峰', startTime: '08:00', endTime: '11:00', description: '高峰上午' },
         { type: '高峰', startTime: '19:00', endTime: '24:00', description: '高峰晚间' },
         { type: '平段', startTime: '00:00', endTime: '08:00', description: '平段凌晨' },
@@ -648,16 +680,22 @@ export const provinceData: ProvinceData[] = [
   {
     name: '内蒙古西部（蒙西）',
     hasTimeOfUsePricing: true,
-    months: createYearRoundData([
-      { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
-      { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰晚间' },
-      { type: '平段', startTime: '00:00', endTime: '07:00', description: '平段凌晨' },
-      { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
-      { type: '低谷', startTime: '09:00', endTime: '17:00', description: '低谷白天' },
-    ])
+    months: Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      monthName: `${i + 1}月`,
+      hasPeak: false,
+      hasDeepValley: false,
+      timeSlots: [
+        { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
+        { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰晚间' },
+        { type: '平段', startTime: '00:00', endTime: '07:00', description: '平段凌晨' },
+        { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
+        { type: '低谷', startTime: '09:00', endTime: '17:00', description: '低谷白天' },
+      ],
+    }))
   },
   
-  // 20. 江西省 - 修复：尖峰从高峰分离，避免重叠
+  // 20. 江西省
   {
     name: '江西省',
     hasTimeOfUsePricing: true,
@@ -665,7 +703,7 @@ export const provinceData: ProvinceData[] = [
       { months: [1, 12], slots: [
         { type: '尖峰', startTime: '18:00', endTime: '20:00', description: '尖峰时段' },
         { type: '高峰', startTime: '09:00', endTime: '12:00', description: '高峰上午' },
-        { type: '高峰', startTime: '20:00', endTime: '21:00', description: '高峰晚间' },
+        { type: '高峰', startTime: '18:00', endTime: '21:00', description: '高峰晚间' },
         { type: '平段', startTime: '06:00', endTime: '09:00', description: '平段上午' },
         { type: '平段', startTime: '12:00', endTime: '18:00', description: '平段下午' },
         { type: '平段', startTime: '21:00', endTime: '24:00', description: '平段深夜' },
@@ -678,7 +716,7 @@ export const provinceData: ProvinceData[] = [
         { type: '低谷', startTime: '00:00', endTime: '06:00', description: '低谷时段' },
       ]},
       { months: [7, 8, 9], slots: [
-        { type: '尖峰', startTime: '20:30', endTime: '22:30', description: '尖峰时段' },
+        { type: '尖峰', startTime: '20:30', endTime: '22:30', description: '尖峰时段（7、8月）' },
         { type: '高峰', startTime: '17:00', endTime: '20:30', description: '高峰下午' },
         { type: '高峰', startTime: '22:30', endTime: '23:00', description: '高峰深夜' },
         { type: '平段', startTime: '05:00', endTime: '11:30', description: '平段上午' },
@@ -761,26 +799,38 @@ export const provinceData: ProvinceData[] = [
   {
     name: '青海省',
     hasTimeOfUsePricing: true,
-    months: createYearRoundData([
-      { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
-      { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰晚间' },
-      { type: '平段', startTime: '00:00', endTime: '07:00', description: '平段凌晨' },
-      { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
-      { type: '低谷', startTime: '09:00', endTime: '17:00', description: '低谷白天' },
-    ])
+    months: Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      monthName: `${i + 1}月`,
+      hasPeak: false,
+      hasDeepValley: false,
+      timeSlots: [
+        { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
+        { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰晚间' },
+        { type: '平段', startTime: '00:00', endTime: '07:00', description: '平段凌晨' },
+        { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
+        { type: '低谷', startTime: '09:00', endTime: '17:00', description: '低谷白天' },
+      ],
+    }))
   },
   
   // 24. 宁夏回族自治区
   {
     name: '宁夏回族自治区',
     hasTimeOfUsePricing: true,
-    months: createYearRoundData([
-      { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
-      { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰晚间' },
-      { type: '平段', startTime: '00:00', endTime: '07:00', description: '平段凌晨' },
-      { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
-      { type: '低谷', startTime: '09:00', endTime: '17:00', description: '低谷白天' },
-    ])
+    months: Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      monthName: `${i + 1}月`,
+      hasPeak: false,
+      hasDeepValley: false,
+      timeSlots: [
+        { type: '高峰', startTime: '07:00', endTime: '09:00', description: '高峰上午' },
+        { type: '高峰', startTime: '17:00', endTime: '23:00', description: '高峰晚间' },
+        { type: '平段', startTime: '00:00', endTime: '07:00', description: '平段凌晨' },
+        { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
+        { type: '低谷', startTime: '09:00', endTime: '17:00', description: '低谷白天' },
+      ],
+    }))
   },
   
   // 25. 陕西省（不含榆林）
@@ -790,7 +840,8 @@ export const provinceData: ProvinceData[] = [
     months: createMonthData([
       { months: [7, 8], slots: [
         { type: '尖峰', startTime: '19:00', endTime: '21:00', description: '尖峰时段' },
-        { type: '高峰', startTime: '16:00', endTime: '23:00', description: '高峰时段' },
+        { type: '高峰', startTime: '16:00', endTime: '19:00', description: '高峰下午1' },
+        { type: '高峰', startTime: '21:00', endTime: '23:00', description: '高峰晚间' },
         { type: '平段', startTime: '06:00', endTime: '11:00', description: '平段上午' },
         { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
         { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
@@ -799,7 +850,8 @@ export const provinceData: ProvinceData[] = [
       ]},
       { months: [1, 12], slots: [
         { type: '尖峰', startTime: '18:00', endTime: '20:00', description: '尖峰时段' },
-        { type: '高峰', startTime: '16:00', endTime: '23:00', description: '高峰时段' },
+        { type: '高峰', startTime: '16:00', endTime: '18:00', description: '高峰下午1' },
+        { type: '高峰', startTime: '20:00', endTime: '23:00', description: '高峰晚间' },
         { type: '平段', startTime: '06:00', endTime: '11:00', description: '平段上午' },
         { type: '平段', startTime: '14:00', endTime: '16:00', description: '平段下午' },
         { type: '平段', startTime: '23:00', endTime: '24:00', description: '平段深夜' },
@@ -817,7 +869,7 @@ export const provinceData: ProvinceData[] = [
     ])
   },
   
-  // 26. 天津市 - 修复：尖峰从高峰分离，避免重叠
+  // 26. 天津市
   {
     name: '天津市',
     hasTimeOfUsePricing: true,
@@ -860,14 +912,20 @@ export const provinceData: ProvinceData[] = [
   {
     name: '甘肃省',
     hasTimeOfUsePricing: true,
-    months: createYearRoundData([
-      { type: '高峰', startTime: '06:00', endTime: '08:00', description: '高峰早晨' },
-      { type: '高峰', startTime: '18:00', endTime: '23:00', description: '高峰晚间' },
-      { type: '平段', startTime: '23:00', endTime: '06:00', description: '平段夜间' },
-      { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
-      { type: '平段', startTime: '16:00', endTime: '18:00', description: '平段下午' },
-      { type: '低谷', startTime: '10:00', endTime: '16:00', description: '低谷白天' },
-    ])
+    months: Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      monthName: `${i + 1}月`,
+      hasPeak: false,
+      hasDeepValley: false,
+      timeSlots: [
+        { type: '高峰', startTime: '06:00', endTime: '08:00', description: '高峰早晨' },
+        { type: '高峰', startTime: '18:00', endTime: '23:00', description: '高峰晚间' },
+        { type: '平段', startTime: '23:00', endTime: '06:00', description: '平段夜间' },
+        { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
+        { type: '平段', startTime: '16:00', endTime: '18:00', description: '平段下午' },
+        { type: '低谷', startTime: '10:00', endTime: '16:00', description: '低谷白天' },
+      ],
+    }))
   },
   
   // 28. 新疆维吾尔自治区
@@ -913,7 +971,7 @@ export const provinceData: ProvinceData[] = [
         { type: '高峰', startTime: '22:00', endTime: '24:00', description: '高峰深夜' },
         { type: '平段', startTime: '07:00', endTime: '10:00', description: '平段上午' },
         { type: '平段', startTime: '12:00', endTime: '16:00', description: '平段下午' },
-        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
+        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段深夜' },
         { type: '低谷', startTime: '23:00', endTime: '07:00', description: '低谷时段' },
       ]},
       { months: [1, 2, 3, 4, 8, 9, 10, 11, 12], slots: [
@@ -921,7 +979,7 @@ export const provinceData: ProvinceData[] = [
         { type: '高峰', startTime: '16:00', endTime: '22:00', description: '高峰下午' },
         { type: '平段', startTime: '07:00', endTime: '10:00', description: '平段上午' },
         { type: '平段', startTime: '12:00', endTime: '16:00', description: '平段下午' },
-        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段晚间' },
+        { type: '平段', startTime: '22:00', endTime: '23:00', description: '平段深夜' },
         { type: '低谷', startTime: '23:00', endTime: '07:00', description: '低谷时段' },
       ]},
     ])
@@ -931,19 +989,25 @@ export const provinceData: ProvinceData[] = [
   {
     name: '贵州省',
     hasTimeOfUsePricing: true,
-    months: createYearRoundData([
-      { type: '高峰', startTime: '10:00', endTime: '11:00', description: '高峰上午' },
-      { type: '高峰', startTime: '17:00', endTime: '22:00', description: '高峰晚间' },
-      { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
-      { type: '平段', startTime: '11:00', endTime: '13:00', description: '平段中午' },
-      { type: '平段', startTime: '15:00', endTime: '17:00', description: '平段下午' },
-      { type: '平段', startTime: '22:00', endTime: '24:00', description: '平段深夜' },
-      { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷凌晨' },
-      { type: '低谷', startTime: '13:00', endTime: '15:00', description: '低谷中午' },
-    ])
+    months: Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      monthName: `${i + 1}月`,
+      hasPeak: false,
+      hasDeepValley: false,
+      timeSlots: [
+        { type: '高峰', startTime: '10:00', endTime: '11:00', description: '高峰上午' },
+        { type: '高峰', startTime: '17:00', endTime: '22:00', description: '高峰晚间' },
+        { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
+        { type: '平段', startTime: '11:00', endTime: '13:00', description: '平段中午' },
+        { type: '平段', startTime: '15:00', endTime: '17:00', description: '平段下午' },
+        { type: '平段', startTime: '22:00', endTime: '24:00', description: '平段深夜' },
+        { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷凌晨' },
+        { type: '低谷', startTime: '13:00', endTime: '15:00', description: '低谷中午' },
+      ],
+    }))
   },
   
-  // 31. 深圳市 - 修复：7-9月有尖峰，其他月份无尖峰，补充12:00-14:00平段
+  // 31. 深圳市 - 7-9月有尖峰
   {
     name: '深圳市',
     hasTimeOfUsePricing: true,
@@ -951,10 +1015,10 @@ export const provinceData: ProvinceData[] = [
       { months: [7, 8, 9], slots: [
         { type: '尖峰', startTime: '11:00', endTime: '12:00', description: '尖峰时段1' },
         { type: '尖峰', startTime: '15:00', endTime: '17:00', description: '尖峰时段2' },
-        { type: '高峰', startTime: '10:00', endTime: '12:00', description: '高峰上午' },
-        { type: '高峰', startTime: '14:00', endTime: '19:00', description: '高峰下午' },
+        { type: '高峰', startTime: '10:00', endTime: '11:00', description: '高峰上午' },
+        { type: '高峰', startTime: '12:00', endTime: '14:00', description: '高峰中午' },
+        { type: '高峰', startTime: '17:00', endTime: '19:00', description: '高峰下午' },
         { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
-        { type: '平段', startTime: '12:00', endTime: '14:00', description: '平段中午' },
         { type: '平段', startTime: '19:00', endTime: '24:00', description: '平段晚间' },
         { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷时段' },
       ]},
@@ -969,7 +1033,7 @@ export const provinceData: ProvinceData[] = [
     ])
   },
   
-  // 32. 福建省 - 修复：尖峰从高峰分离，避免重叠
+  // 32. 福建省
   {
     name: '福建省',
     hasTimeOfUsePricing: true,
@@ -978,8 +1042,8 @@ export const provinceData: ProvinceData[] = [
         { type: '尖峰', startTime: '11:00', endTime: '12:00', description: '尖峰时段1' },
         { type: '尖峰', startTime: '17:00', endTime: '18:00', description: '尖峰时段2' },
         { type: '高峰', startTime: '10:00', endTime: '11:00', description: '高峰上午1' },
-        { type: '高峰', startTime: '12:00', endTime: '15:00', description: '高峰下午1' },
-        { type: '高峰', startTime: '18:00', endTime: '20:00', description: '高峰下午2' },
+        { type: '高峰', startTime: '12:00', endTime: '15:00', description: '高峰中午' },
+        { type: '高峰', startTime: '18:00', endTime: '20:00', description: '高峰下午' },
         { type: '高峰', startTime: '21:00', endTime: '22:00', description: '高峰晚间' },
         { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
         { type: '平段', startTime: '15:00', endTime: '17:00', description: '平段下午' },
