@@ -189,7 +189,7 @@ export const provinceData: ProvinceData[] = [
     ])
   },
   
-  // 5. 广东省（珠三角五市）- 修复：7-9月有尖峰，其他月份无尖峰
+  // 5. 广东省（珠三角五市）- 修复：7-9月有尖峰，其他月份无尖峰，补充12:00-14:00平段
   {
     name: '广东省（珠三角五市）',
     hasTimeOfUsePricing: true,
@@ -200,6 +200,7 @@ export const provinceData: ProvinceData[] = [
         { type: '高峰', startTime: '10:00', endTime: '12:00', description: '高峰上午' },
         { type: '高峰', startTime: '14:00', endTime: '19:00', description: '高峰下午' },
         { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
+        { type: '平段', startTime: '12:00', endTime: '14:00', description: '平段中午' },
         { type: '平段', startTime: '19:00', endTime: '24:00', description: '平段晚间' },
         { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷时段' },
       ]},
@@ -207,6 +208,7 @@ export const provinceData: ProvinceData[] = [
         { type: '高峰', startTime: '10:00', endTime: '12:00', description: '高峰上午' },
         { type: '高峰', startTime: '14:00', endTime: '19:00', description: '高峰下午' },
         { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
+        { type: '平段', startTime: '12:00', endTime: '14:00', description: '平段中午' },
         { type: '平段', startTime: '19:00', endTime: '24:00', description: '平段晚间' },
         { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷时段' },
       ]},
@@ -909,7 +911,7 @@ export const provinceData: ProvinceData[] = [
     ])
   },
   
-  // 31. 深圳市 - 修复：7-9月有尖峰，其他月份无尖峰
+  // 31. 深圳市 - 修复：7-9月有尖峰，其他月份无尖峰，补充12:00-14:00平段
   {
     name: '深圳市',
     hasTimeOfUsePricing: true,
@@ -920,6 +922,7 @@ export const provinceData: ProvinceData[] = [
         { type: '高峰', startTime: '10:00', endTime: '12:00', description: '高峰上午' },
         { type: '高峰', startTime: '14:00', endTime: '19:00', description: '高峰下午' },
         { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
+        { type: '平段', startTime: '12:00', endTime: '14:00', description: '平段中午' },
         { type: '平段', startTime: '19:00', endTime: '24:00', description: '平段晚间' },
         { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷时段' },
       ]},
@@ -927,6 +930,7 @@ export const provinceData: ProvinceData[] = [
         { type: '高峰', startTime: '10:00', endTime: '12:00', description: '高峰上午' },
         { type: '高峰', startTime: '14:00', endTime: '19:00', description: '高峰下午' },
         { type: '平段', startTime: '08:00', endTime: '10:00', description: '平段上午' },
+        { type: '平段', startTime: '12:00', endTime: '14:00', description: '平段中午' },
         { type: '平段', startTime: '19:00', endTime: '24:00', description: '平段晚间' },
         { type: '低谷', startTime: '00:00', endTime: '08:00', description: '低谷时段' },
       ]},
